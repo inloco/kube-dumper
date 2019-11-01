@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: kube-system
+  name: kube-backup
+data:
+  CODECOMMIT_HTTPS: https://git-codecommit.us-east-1.amazonaws.com/v1/repos/kubebackup-lostwoods

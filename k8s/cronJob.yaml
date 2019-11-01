@@ -1,0 +1,33 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  namespace: kube-system
+  name: kube-backup
+spec:
+  schedule: "*/1 * * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: kube-backup
+          restartPolicy: OnFailure
+          containers:
+            - name: kube-backup
+              image: 322633204976.dkr.ecr.us-east-1.amazonaws.com/inloco/kube-backup:0.0.12
+              env:
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: kube-backup
+                      key: AWS_ACCESS_KEY_ID
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: kube-backup
+                      key: AWS_SECRET_ACCESS_KEY
+                - name: CODECOMMIT_HTTPS
+                  valueFrom:
+                    configMapKeyRef:
+                      name: kube-backup
+                      key: CODECOMMIT_HTTPS

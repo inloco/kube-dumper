@@ -1,2 +1,2 @@
-# kube-glacier
+# kube-dumper
 K8s Backup CronJob

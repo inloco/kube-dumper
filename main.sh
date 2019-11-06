@@ -24,7 +24,17 @@ del(
 )
 EOF
 
-alias json2yaml='ruby -ryaml -rjson -e "puts YAML.dump(JSON.parse(STDIN.read))" | tail -n +2'
+function sanitize {
+    jq "$JQ_SANITIZER"
+}
+
+function json2yaml {
+    ruby -ryaml -rjson -e "puts YAML.dump(JSON.parse(STDIN.read))" | tail -n +2
+}
+
+function owned {
+    jq -e .metadata.ownerReferences $* >/dev/null 2>&1
+}
 
 GLOBAL_RESOURCE_TYPES=$(kubectl api-resources --namespaced=false --output=name --verbs=create,get)
 NAMESPACED_RESOURCE_TYPES=$(kubectl api-resources --namespaced=true --output=name --verbs=create,get)
@@ -50,7 +60,12 @@ cd _
         RESOURCES=$(kubectl get $RESOURCE_TYPE --output=name | cut -d / -f 2)
         for RESOURCE in $RESOURCES
         do
-            kubectl get $RESOURCE_TYPE/$RESOURCE --output=json | jq "$JQ_SANITIZER" | json2yaml > $RESOURCE.yaml
+            kubectl get $RESOURCE_TYPE/$RESOURCE --output=json | sanitize | json2yaml > $RESOURCE.yaml
+
+            if owned $RESOURCE.yaml
+            then
+                rm $RESOURCE.yaml
+            fi
         done
 
         cd ..
@@ -80,7 +95,7 @@ do
         RESOURCES=$(kubectl get $RESOURCE_TYPE --namespace=$NAMESPACE --output=name | cut -d / -f 2)
         for RESOURCE in $RESOURCES
         do
-            kubectl get $RESOURCE_TYPE/$RESOURCE --namespace=$NAMESPACE --output=json | jq "$JQ_SANITIZER" | json2yaml > $RESOURCE.yaml
+            kubectl get $RESOURCE_TYPE/$RESOURCE --namespace=$NAMESPACE --output=json | sanitize | json2yaml > $RESOURCE.yaml
 
             if [ "$RESOURCE_TYPE" == 'secrets' ]
             then
@@ -90,6 +105,11 @@ do
                 then
                     git checkout $RESOURCE.yaml
                 fi
+            fi
+
+            if owned $RESOURCE.yaml
+            then
+                rm $RESOURCE.yaml
             fi
         done
 

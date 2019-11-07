@@ -40,7 +40,7 @@ function owned {
 }
 
 function differ {
-    git add $*
+    git add $* || true
     [ ! -z "$(git diff HEAD $*)" ]
 }
 

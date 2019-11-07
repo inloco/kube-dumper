@@ -15,7 +15,6 @@ del(
     .metadata.generateName,
     .metadata.generation,
     .metadata.labels."pod-template-hash",
-    .metadata.ownerReferences,
     .metadata.resourceVersion,
     .metadata.selfLink,
     .metadata.uid,

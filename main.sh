@@ -36,8 +36,8 @@ function owned {
 }
 
 function differ {
-    git add $RESOURCE.yaml
-    [ ! -z "$(git diff HEAD $RESOURCE.yaml)" ]
+    git add $*
+    [ ! -z "$(git diff HEAD $*)" ]
 }
 
 GLOBAL_RESOURCE_TYPES=$(kubectl api-resources --namespaced=false --output=name --verbs=create,get)

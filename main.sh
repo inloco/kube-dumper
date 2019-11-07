@@ -36,6 +36,11 @@ function owned {
     jq -e .metadata.ownerReferences $* >/dev/null 2>&1
 }
 
+function differ {
+    git add $RESOURCE.yaml
+    [ ! -z "$(git diff HEAD $RESOURCE.yaml)" ]
+}
+
 GLOBAL_RESOURCE_TYPES=$(kubectl api-resources --namespaced=false --output=name --verbs=create,get)
 NAMESPACED_RESOURCE_TYPES=$(kubectl api-resources --namespaced=true --output=name --verbs=create,get)
 NAMESPACES=$(kubectl get namespaces -o name | cut -d / -f 2)
@@ -101,7 +106,7 @@ do
             then
                 sops -e -i $RESOURCE.yaml
 
-                if [ -z "$(git diff HEAD $RESOURCE.yaml)" ]
+                if ! differ $RESOURCE.yaml
                 then
                     git checkout $RESOURCE.yaml
                 fi

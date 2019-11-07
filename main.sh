@@ -123,5 +123,7 @@ do
 done
 
 git add -A
-git commit -m "$(date)"
-git push
+if git commit -m "$(date)"
+then
+    git push
+fi

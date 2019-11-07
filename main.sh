@@ -102,7 +102,7 @@ do
 
                 if ! differ $RESOURCE.yaml
                 then
-                    git checkout $RESOURCE.yaml
+                    git checkout HEAD $RESOURCE.yaml
                 fi
             fi
 

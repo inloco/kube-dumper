@@ -66,11 +66,6 @@ cd _
         for RESOURCE in $RESOURCES
         do
             kubectl get $RESOURCE_TYPE/$RESOURCE --output=json | sanitize | json2yaml > $RESOURCE.yaml
-
-            if owned $RESOURCE.yaml
-            then
-                rm $RESOURCE.yaml
-            fi
         done
 
         cd ..

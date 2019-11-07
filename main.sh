@@ -31,8 +31,12 @@ function json2yaml {
     ruby -ryaml -rjson -e "puts YAML.dump(JSON.parse(STDIN.read))" | tail -n +2
 }
 
+function yaml2json {
+    ruby -ryaml -rjson -e "puts JSON.generate(YAML.load(STDIN.read))"
+}
+
 function owned {
-    jq -e .metadata.ownerReferences $* >/dev/null 2>&1
+    cat $* | yaml2json | jq -e .metadata.ownerReferences >/dev/null 2>&1
 }
 
 function differ {

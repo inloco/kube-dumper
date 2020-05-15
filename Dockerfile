@@ -1,4 +1,4 @@
-FROM alpine:3.8
+FROM alpine:3.11
 
 ADD https://s3.amazonaws.com/aws-cli/awscli-bundle.zip awscli-bundle.zip
 RUN unzip awscli-bundle.zip && \

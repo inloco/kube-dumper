@@ -23,5 +23,5 @@ RUN apk add --no-cache jq ruby ruby-json
 COPY ./main.sh /init
 RUN chmod +x /init
 
-WORKDIR /tmp
+WORKDIR /root
 ENTRYPOINT [ "/init" ]

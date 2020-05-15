@@ -32,3 +32,6 @@ spec:
                     configMapKeyRef:
                       name: kube-backup
                       key: CODECOMMIT_HTTPS
+              resources:
+                requests:
+                  ephemeral-storage: 64Mi

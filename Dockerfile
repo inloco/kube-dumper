@@ -6,7 +6,7 @@ RUN unzip awscli-bundle.zip && \
     ./awscli-bundle/install -i /usr/local/aws -b /usr/local/bin/aws && \
     rm -fR awscli-bundle*
 
-ADD https://storage.googleapis.com/kubernetes-release/release/v1.16.0/bin/linux/amd64/kubectl /usr/local/bin/kubectl
+ADD https://storage.googleapis.com/kubernetes-release/release/v1.18.0/bin/linux/amd64/kubectl /usr/local/bin/kubectl
 RUN chmod +x /usr/local/bin/kubectl
 
 ADD https://github.com/mozilla/sops/releases/download/3.4.0/sops-3.4.0.linux /usr/local/bin/sops

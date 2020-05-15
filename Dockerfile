@@ -9,7 +9,7 @@ RUN unzip awscli-bundle.zip && \
 ADD https://storage.googleapis.com/kubernetes-release/release/v1.18.0/bin/linux/amd64/kubectl /usr/local/bin/kubectl
 RUN chmod +x /usr/local/bin/kubectl
 
-ADD https://github.com/mozilla/sops/releases/download/3.4.0/sops-3.4.0.linux /usr/local/bin/sops
+ADD https://github.com/mozilla/sops/releases/download/v3.5.0/sops-v3.5.0.linux /usr/local/bin/sops
 RUN chmod +x /usr/local/bin/sops
 
 RUN apk add git && \

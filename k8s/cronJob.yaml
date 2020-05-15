@@ -15,7 +15,7 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: kube-backup
-              image: inloco/kube-backup:v1.0.0
+              image: inloco/kube-backup:v1.0.1
               env:
                 - name: AWS_ACCESS_KEY_ID
                   valueFrom:

@@ -8,7 +8,7 @@ del(
     .metadata.annotations."deployment.kubernetes.io/revision-history",
     .metadata.annotations."deployment.kubernetes.io/desired-replicas",
     .metadata.annotations."deployment.kubernetes.io/max-replicas",
-    .metadata.annotations."kubectl.kubernetes.io/last-applied-configuration:",
+    .metadata.annotations."kubectl.kubernetes.io/last-applied-configuration",
     .metadata.creationTimestamp,
     .metadata.deletionTimestamp,
     .metadata.finalizers,

@@ -1,2 +1,2 @@
 # kube-dumper
-K8s Backup CronJob
+K8s Dumper CronJob

@@ -2,12 +2,12 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   namespace: default
-  name: kube-backup
+  name: kube-dumper
 subjects:
   - kind: ServiceAccount
     namespace: kube-system
-    name: kube-backup
+    name: kube-dumper
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: kube-backup
+  name: kube-dumper

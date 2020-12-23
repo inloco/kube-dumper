@@ -1,27 +1,22 @@
-FROM alpine:3.11
+FROM golang:1.15 AS build
+WORKDIR /go/src/github.com/inloco/kube-dumper
+COPY ./go.mod ./go.sum ./
+RUN go mod download
+COPY ./*.go ./
+RUN CGO_ENABLED=0 go install -a -v -trimpath -ldflags '-d -extldflags "-fno-PIC -static"' -tags 'netgo osusergo static_build' ./...
 
-ADD https://s3.amazonaws.com/aws-cli/awscli-bundle.zip awscli-bundle.zip
-RUN unzip awscli-bundle.zip && \
-    apk add --no-cache python && \
-    ./awscli-bundle/install -i /usr/local/aws -b /usr/local/bin/aws && \
-    rm -fR awscli-bundle*
-
-ADD https://storage.googleapis.com/kubernetes-release/release/v1.18.0/bin/linux/amd64/kubectl /usr/local/bin/kubectl
-RUN chmod +x /usr/local/bin/kubectl
-
+FROM alpine:3.12 AS runtime
 ADD https://github.com/mozilla/sops/releases/download/v3.5.0/sops-v3.5.0.linux /usr/local/bin/sops
-RUN chmod +x /usr/local/bin/sops
+RUN chmod +x /usr/local/bin/sops 
 
-RUN apk add --no-cache git && \
-    git config --global credential.helper '!aws codecommit credential-helper $@' && \
-    git config --global credential.UseHttpPath true && \
-    git config --global user.email 'kube-dumper@inloco.com.br' && \
-    git config --global user.name 'Kube Dumper'
+RUN apk add --no-cache openssh-client git && \
+    mkdir ~/.ssh && \
+    ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts && \
+    git config --global user.email "kube-dumper@inloco.com.br" && \
+    git config --global user.name "Kube Dumper"
 
-RUN apk add --no-cache jq ruby ruby-json
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=build /go/bin/kube-dumper /init
 
-COPY ./main.sh /init
-RUN chmod +x /init
-
-WORKDIR $HOME/workdir
-ENTRYPOINT [ "/init" ]
+WORKDIR /root/dumper
+CMD [ "/init" ]

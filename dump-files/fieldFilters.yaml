@@ -1,0 +1,23 @@
+metadata:
+  annotations:
+    control-plane.alpha.kubernetes.io/leader:
+    deployment.kubernetes.io/revision:
+    deployment.kubernetes.io/revision-history:
+    deployment.kubernetes.io/desired-replicas:
+    deployment.kubernetes.io/max-replicas:
+    kubectl.kubernetes.io/last-applied-configuration:
+  creationTimestamp:
+  deletionTimestamp:
+  finalizers:
+  generateName:
+  generation:
+  resourceVersion:
+  selfLink:
+  uid:
+  labels:
+    pod-template-hash:
+  managedFields:
+spec:
+  nodeName:
+  renewTime:
+status:

@@ -5,7 +5,7 @@ metadata:
   name: kube-dumper
 subjects:
   - kind: ServiceAccount
-    namespace: kube-system
+    namespace: kube-dumper
     name: kube-dumper
 roleRef:
   apiGroup: rbac.authorization.k8s.io

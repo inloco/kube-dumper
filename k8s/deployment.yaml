@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: kube-dumper
+  name: kube-dumper
+  labels:
+    app: kube-dumper
+spec:
+  selector:
+    matchLabels:
+      app: kube-dumper
+  template:
+    metadata:
+      namespace: kube-dumper
+      name: kube-dumper
+      labels:
+        app: kube-dumper
+    spec:
+      serviceAccountName: kube-dumper
+      restartPolicy: Always
+      containers:
+        - name: kube-dumper
+          image: inloco/kube-dumper
+          volumeMounts:
+            - name: dump-files
+              mountPath: /root/dump-files
+              readOnly: true
+            - mountPath: /root/.ssh/id_rsa
+              name: ssh
+              readOnly: true
+              subPath: id_rsa
+          env:
+            - name: REPOSITORY_URL
+              valueFrom:
+                configMapKeyRef:
+                  key: REPOSITORY_URL
+                  name: kube-dumper
+            - name: REFRESH_GVRS_TIME_IN_MINUTES
+              valueFrom:
+                configMapKeyRef:
+                  key: REFRESH_GVRS_TIME_IN_MINUTES
+                  name: kube-dumper
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  key: AWS_ACCESS_KEY_ID
+                  name: aws
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: AWS_SECRET_ACCESS_KEY
+                  name: aws
+            - name: AWS_REGION
+              valueFrom:
+                secretKeyRef:
+                  key: AWS_REGION
+                  name: aws
+          resources:
+            requests:
+              ephemeral-storage: 64Mi
+      volumes:
+        - name: dump-files
+          configMap:
+            name: dump-files
+        - name: ssh
+          secret:
+            secretName: ssh
+            defaultMode: 0400

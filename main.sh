@@ -3,6 +3,9 @@ set -ex
 
 read -d '' JQ_SANITIZER << EOF || true
 del(
+    .managedFields,
+    .metadata.annotations."autoscaling.alpha.kubernetes.io/conditions",
+    .metadata.annotations."autoscaling.alpha.kubernetes.io/current-metrics",
     .metadata.annotations."control-plane.alpha.kubernetes.io/leader",
     .metadata.annotations."deployment.kubernetes.io/revision",
     .metadata.annotations."deployment.kubernetes.io/revision-history",
@@ -18,8 +21,9 @@ del(
     .metadata.resourceVersion,
     .metadata.selfLink,
     .metadata.uid,
-    .status,
-    .spec.nodeName
+    .spec.nodeName,
+    .spec.renewTime,
+    .status
 )
 EOF
 
@@ -98,6 +102,11 @@ do
         RESOURCES=$(kubectl get $RESOURCE_TYPE --namespace=$NAMESPACE --output=name | cut -d / -f 2)
         for RESOURCE in $RESOURCES
         do
+            if [ "$NAMESPACE" == 'kube-system' ] && [ "$RESOURCE_TYPE" == 'configmaps' ] && [ "$RESOURCE" == 'cluster-autoscaler-status' ]
+            then
+                continue
+            fi
+
             kubectl get $RESOURCE_TYPE/$RESOURCE --namespace=$NAMESPACE --output=json | sanitize | json2yaml > $RESOURCE.yaml
 
             if [ "$RESOURCE_TYPE" == 'secrets' ]

@@ -3,7 +3,6 @@ set -ex
 
 read -d '' JQ_SANITIZER << EOF || true
 del(
-    .managedFields,
     .metadata.annotations."autoscaling.alpha.kubernetes.io/conditions",
     .metadata.annotations."autoscaling.alpha.kubernetes.io/current-metrics",
     .metadata.annotations."control-plane.alpha.kubernetes.io/leader",
@@ -18,6 +17,7 @@ del(
     .metadata.generateName,
     .metadata.generation,
     .metadata.labels."pod-template-hash",
+    .metadata.managedFields,
     .metadata.resourceVersion,
     .metadata.selfLink,
     .metadata.uid,

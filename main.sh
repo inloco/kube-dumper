@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -ex
 
 read -d '' JQ_SANITIZER << EOF || true
@@ -32,11 +32,11 @@ function sanitize {
 }
 
 function json2yaml {
-    ruby -ryaml -rjson -e "puts YAML.dump(JSON.parse(STDIN.read))" | tail -n +2
+    yq -y .
 }
 
 function yaml2json {
-    ruby -ryaml -rjson -e "puts JSON.generate(YAML.load(STDIN.read))"
+    yq .
 }
 
 function owned {
@@ -50,7 +50,7 @@ function differ {
 
 GLOBAL_RESOURCE_TYPES=$(kubectl api-resources --namespaced=false --output=name --verbs=create,get)
 NAMESPACED_RESOURCE_TYPES=$(kubectl api-resources --namespaced=true --output=name --verbs=create,get)
-NAMESPACES=$(kubectl get namespaces -o name | cut -d / -f 2)
+NAMESPACES=$(kubectl get namespaces --output=name | cut -d / -f 2)
 
 git clone $CODECOMMIT_HTTPS .
 git config --local include.path ../.gitconfig
@@ -69,10 +69,11 @@ cd _
         mkdir -p $RESOURCE_TYPE
         cd $RESOURCE_TYPE
 
-        RESOURCES=$(kubectl get $RESOURCE_TYPE --output=name | cut -d / -f 2)
-        for RESOURCE in $RESOURCES
+        RESOURCES=$(kubectl get $RESOURCE_TYPE --output=json | jq -c '.items[]')
+        echo -E "$RESOURCES" | while read -r RESOURCE
         do
-            kubectl get $RESOURCE_TYPE/$RESOURCE --output=json | sanitize | json2yaml > $RESOURCE.yaml
+            NAME=$(echo -E "$RESOURCE" | jq -r .metadata.name)
+            echo -E "$RESOURCE" | sanitize | json2yaml > $NAME.yaml
         done
 
         cd ..
@@ -99,29 +100,31 @@ do
         mkdir -p $RESOURCE_TYPE
         cd $RESOURCE_TYPE
 
-        RESOURCES=$(kubectl get $RESOURCE_TYPE --namespace=$NAMESPACE --output=name | cut -d / -f 2)
-        for RESOURCE in $RESOURCES
+        RESOURCES=$(kubectl get $RESOURCE_TYPE --namespace=$NAMESPACE --output=json | jq -c '.items[]')
+        echo -E "$RESOURCES" | while read -r RESOURCE
         do
-            if [ "$NAMESPACE" == 'kube-system' ] && [ "$RESOURCE_TYPE" == 'configmaps' ] && [ "$RESOURCE" == 'cluster-autoscaler-status' ]
+            NAME=$(echo -E "$RESOURCE" | jq -r .metadata.name)
+
+            if [ "$NAMESPACE" == 'kube-system' ] && [ "$RESOURCE_TYPE" == 'configmaps' ] && [ "$NAME" == 'cluster-autoscaler-status' ]
             then
                 continue
             fi
 
-            kubectl get $RESOURCE_TYPE/$RESOURCE --namespace=$NAMESPACE --output=json | sanitize | json2yaml > $RESOURCE.yaml
+            echo -E "$RESOURCE" | sanitize | json2yaml > $NAME.yaml
 
             if [ "$RESOURCE_TYPE" == 'secrets' ]
             then
-                sops -e -i $RESOURCE.yaml
+                sops -e -i $NAME.yaml
 
-                if ! differ $RESOURCE.yaml
+                if ! differ $NAME.yaml
                 then
-                    git checkout HEAD $RESOURCE.yaml
+                    git checkout HEAD $NAME.yaml
                 fi
             fi
 
-            if owned $RESOURCE.yaml
+            if owned $NAME.yaml
             then
-                rm $RESOURCE.yaml
+                rm $NAME.yaml
             fi
         done
 

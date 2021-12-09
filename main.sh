@@ -52,7 +52,8 @@ GLOBAL_RESOURCE_TYPES=$(kubectl api-resources --namespaced=false --output=name -
 NAMESPACED_RESOURCE_TYPES=$(kubectl api-resources --namespaced=true --output=name --verbs=create,get)
 NAMESPACES=$(kubectl get namespaces --output=name | cut -d / -f 2)
 
-git clone $CODECOMMIT_HTTPS .
+git clone --depth 1 $CODECOMMIT_HTTPS .
+git fetch --unshallow
 git config --local include.path ../.gitconfig
 
 rm -fR *

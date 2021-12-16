@@ -48,12 +48,16 @@ function differ {
     [ ! -z "$(git diff HEAD $*)" ]
 }
 
+function run_with_retry {
+    parallel --retries 5 --delay 10 ::: "$*"
+}
+
 GLOBAL_RESOURCE_TYPES=$(kubectl api-resources --namespaced=false --output=name --verbs=create,get)
 NAMESPACED_RESOURCE_TYPES=$(kubectl api-resources --namespaced=true --output=name --verbs=create,get)
 NAMESPACES=$(kubectl get namespaces --output=name | cut -d / -f 2)
 
-git clone --depth 1 $CODECOMMIT_HTTPS .
-git fetch --unshallow
+run_with_retry "git clone --depth 1 $CODECOMMIT_HTTPS ."
+run_with_retry "git fetch --unshallow"
 git config --local include.path ../.gitconfig
 
 rm -fR *
@@ -138,5 +142,5 @@ done
 git add -A
 if git commit -m "$(date)"
 then
-    git push
+    run_with_retry "git push"
 fi

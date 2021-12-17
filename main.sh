@@ -1,5 +1,5 @@
 #!/bin/bash
-set -ex
+set -e
 
 read -d '' JQ_SANITIZER << EOF || true
 del(

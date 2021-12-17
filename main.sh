@@ -35,12 +35,8 @@ function json2yaml {
     yq -y .
 }
 
-function yaml2json {
-    yq .
-}
-
 function owned {
-    cat $* | yaml2json | jq -e .metadata.ownerReferences >/dev/null 2>&1
+    cat $* | yq -e .metadata.ownerReferences >/dev/null 2>&1
 }
 
 function differ {

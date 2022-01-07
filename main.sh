@@ -52,6 +52,11 @@ function log {
     echo "[$(date -u '+%F %T')] $*"
 }
 
+function logn {
+    log "$*"
+    echo
+}
+
 function echoenv {
     # `-E`: disable interpretation of backslash escapes
     # `-n`: do not output the trailing newline
@@ -77,7 +82,7 @@ cd _
         log "Handle '${RESOURCE_TYPE}' global resource type"
         if [ "$RESOURCE_TYPE" == 'nodes' ]
         then
-            log "'${RESOURCE_TYPE}' global resource type ignored"
+            logn "'${RESOURCE_TYPE}' global resource type ignored"
             continue
         fi
 
@@ -94,9 +99,10 @@ cd _
         done
 
         cd ..
+        logn "Finished handling '${RESOURCE_TYPE}' global resource type"
     done
 cd ..
-log "Finished handle global resource types"
+logn "Finished handling global resource types"
 
 log "Handle namespaced resource types"
 for NAMESPACE in $NAMESPACES
@@ -104,7 +110,7 @@ do
     log "Handle resources in namespace '${NAMESPACE}'"
     if [ "$NAMESPACE" == 'kube-node-lease' ]
     then
-        log "'${NAMESPACE}' namespace ignored"
+        logn "'${NAMESPACE}' namespace ignored"
         continue
     fi
 
@@ -116,7 +122,7 @@ do
         log "Handle '${RESOURCE_TYPE}' resource type"
         if [ "$RESOURCE_TYPE" == 'events' ] || [ "$RESOURCE_TYPE" == 'events.events.k8s.io' ]
         then
-            log "'${RESOURCE_TYPE}' resource type ignored"
+            logn "'${RESOURCE_TYPE}' resource type ignored"
             continue
         fi
 
@@ -131,7 +137,7 @@ do
 
             if [ "$NAMESPACE" == 'kube-system' ] && [ "$RESOURCE_TYPE" == 'configmaps' ] && [ "$NAME" == 'cluster-autoscaler-status' ]
             then
-                log "'${NAME}' resource of '${RESOURCE_TYPE}' type from '${NAMESPACE}' namespace ignored"
+                logn "'${NAME}' resource of '${RESOURCE_TYPE}' type from '${NAMESPACE}' namespace ignored"
                 continue
             fi
 
@@ -157,11 +163,13 @@ do
         done
 
         cd ..
+        logn "Finished handling '${RESOURCE_TYPE}' resource type"
     done
 
     cd ..
+    logn "Finished handling resources in namespace '${NAMESPACE}'"
 done
-log "Finished handling namespaced resource types"
+logn "Finished handling namespaced resource types"
 
 log "Commit changes"
 git add -A

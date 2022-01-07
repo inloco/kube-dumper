@@ -52,6 +52,13 @@ function log {
     echo "[$(date -u '+%F %T')] $*"
 }
 
+function echoenv {
+    # `-E`: disable interpretation of backslash escapes
+    # `-n`: do not output the trailing newline
+    # `${!}`: variable indirection
+    echo -En "${!1}"
+}
+
 GLOBAL_RESOURCE_TYPES=$(kubectl api-resources --namespaced=false --output=name --verbs=create,get)
 NAMESPACED_RESOURCE_TYPES=$(kubectl api-resources --namespaced=true --output=name --verbs=create,get)
 NAMESPACES=$(kubectl get namespaces --output=name | cut -d / -f 2)
@@ -79,11 +86,11 @@ cd _
 
         log "Request all resources of '${RESOURCE_TYPE}' global resource type"
         RESOURCES=$(kubectl get $RESOURCE_TYPE --output=json | jq -c '.items[]')
-        echo -E "$RESOURCES" | while read -r RESOURCE
+        echoenv RESOURCES | while read -r RESOURCE
         do
-            NAME=$(echo -E "$RESOURCE" | jq -r .metadata.name)
+            NAME=$(echoenv RESOURCE | jq -r .metadata.name)
             log "Handle '${NAME}' resource of '${RESOURCE_TYPE}' global resource type"
-            echo -E "$RESOURCE" | sanitize | json2yaml > $NAME.yaml
+            echoenv RESOURCE | sanitize | json2yaml > $NAME.yaml
         done
 
         cd ..
@@ -117,9 +124,9 @@ do
         cd $RESOURCE_TYPE
 
         RESOURCES=$(kubectl get $RESOURCE_TYPE --namespace=$NAMESPACE --output=json | jq -c '.items[]')
-        echo -E "$RESOURCES" | while read -r RESOURCE
+        echoenv RESOURCES | while read -r RESOURCE
         do
-            NAME=$(echo -E "$RESOURCE" | jq -r .metadata.name)
+            NAME=$(echoenv RESOURCE | jq -r .metadata.name)
             log "Handle '${NAME}' resource of '${RESOURCE_TYPE}' resource type"
 
             if [ "$NAMESPACE" == 'kube-system' ] && [ "$RESOURCE_TYPE" == 'configmaps' ] && [ "$NAME" == 'cluster-autoscaler-status' ]
@@ -128,7 +135,7 @@ do
                 continue
             fi
 
-            echo -E "$RESOURCE" | sanitize | json2yaml > $NAME.yaml
+            echoenv RESOURCE | sanitize | json2yaml > $NAME.yaml
 
             if [ "$RESOURCE_TYPE" == 'secrets' ]
             then

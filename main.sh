@@ -28,7 +28,7 @@ del(
 EOF
 
 function sanitize {
-    jq "$JQ_SANITIZER"
+    jq "${JQ_SANITIZER}"
 }
 
 function json2yaml {
@@ -36,147 +36,186 @@ function json2yaml {
 }
 
 function owned {
-    cat $* | yq -e .metadata.ownerReferences >/dev/null 2>&1
+    cat ${*} | yq -e .metadata.ownerReferences >/dev/null 2>&1
 }
 
 function differ {
-    git add $* || true
-    [ ! -z "$(git diff HEAD $*)" ]
+    git add ${*} || true
+    [ ! -z "$(git diff HEAD ${*})" ]
 }
 
-function run_with_retry {
-    parallel --retries 5 --delay 10 ::: "$*"
+function retry {
+    parallel --lb --delay 30 --retries 10 ::: "${*}"
 }
 
 function log {
-    echo "[$(date -u '+%F %T')] $*"
+    echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] ${*}"
 }
 
-function logn {
-    log "$*"
-    echo
-}
+log 'BEGIN - Kube Dumper'
 
-function echoenv {
-    # `-E`: disable interpretation of backslash escapes
-    # `-n`: do not output the trailing newline
-    # `${!}`: variable indirection
-    echo -En "${!1}"
-}
+log '+ KUBECTL - api-resources --namespaced=false'
+UNNAMESPACED_TYPES=$(kubectl api-resources --namespaced=false --output=name --verbs=create,get)
 
-GLOBAL_RESOURCE_TYPES=$(kubectl api-resources --namespaced=false --output=name --verbs=create,get)
-NAMESPACED_RESOURCE_TYPES=$(kubectl api-resources --namespaced=true --output=name --verbs=create,get)
+log '+ KUBECTL - api-resources --namespaced=true'
+NAMESPACED_TYPES=$(kubectl api-resources --namespaced=true --output=name --verbs=create,get)
+
+log '+ KUBECTL - get namespaces'
 NAMESPACES=$(kubectl get namespaces --output=name | cut -d / -f 2)
 
-run_with_retry "git clone --depth 1 $CODECOMMIT_HTTPS ."
-run_with_retry "git fetch --unshallow"
+log '+ GIT - clone'
+retry "git clone ${CODECOMMIT_HTTPS} ."
+
+log '+ GIT - config'
 git config --local include.path ../.gitconfig
 
+log '+ RM - *'
 rm -fR *
 
-mkdir -p _
-cd _
-    log "Handle global resource types"
-    for RESOURCE_TYPE in $GLOBAL_RESOURCE_TYPES
-    do
-        log "Handle '${RESOURCE_TYPE}' global resource type"
-        if [ "$RESOURCE_TYPE" == 'nodes' ]
-        then
-            logn "'${RESOURCE_TYPE}' global resource type ignored"
-            continue
-        fi
+log '+ BEGIN - Unnamespaced Resources'
+    log '++ MKDIR - _'
+    mkdir -p _
 
-        mkdir -p $RESOURCE_TYPE
-        cd $RESOURCE_TYPE
-
-        log "Request all resources of '${RESOURCE_TYPE}' global resource type"
-        RESOURCES=$(kubectl get $RESOURCE_TYPE --output=json | jq -c '.items[]')
-        echoenv RESOURCES | while read -r RESOURCE
+    log '++ CD - _'
+    cd _
+        for TYPE in ${UNNAMESPACED_TYPES}
         do
-            NAME=$(echoenv RESOURCE | jq -r .metadata.name)
-            log "Handle '${NAME}' resource of '${RESOURCE_TYPE}' global resource type"
-            echoenv RESOURCE | sanitize | json2yaml > $NAME.yaml
-        done
-
-        cd ..
-        logn "Finished handling '${RESOURCE_TYPE}' global resource type"
-    done
-cd ..
-logn "Finished handling global resource types"
-
-log "Handle namespaced resource types"
-for NAMESPACE in $NAMESPACES
-do
-    log "Handle resources in namespace '${NAMESPACE}'"
-    if [ "$NAMESPACE" == 'kube-node-lease' ]
-    then
-        logn "'${NAMESPACE}' namespace ignored"
-        continue
-    fi
-
-    mkdir -p $NAMESPACE
-    cd $NAMESPACE
-
-    for RESOURCE_TYPE in $NAMESPACED_RESOURCE_TYPES
-    do
-        log "Handle '${RESOURCE_TYPE}' resource type"
-        if [ "$RESOURCE_TYPE" == 'events' ] || [ "$RESOURCE_TYPE" == 'events.events.k8s.io' ]
-        then
-            logn "'${RESOURCE_TYPE}' resource type ignored"
-            continue
-        fi
-
-        mkdir -p $RESOURCE_TYPE
-        cd $RESOURCE_TYPE
-
-        RESOURCES=$(kubectl get $RESOURCE_TYPE --namespace=$NAMESPACE --output=json | jq -c '.items[]')
-        echoenv RESOURCES | while read -r RESOURCE
-        do
-            NAME=$(echoenv RESOURCE | jq -r .metadata.name)
-            log "Handle '${NAME}' resource of '${RESOURCE_TYPE}' resource type"
-
-            if [ "$NAMESPACE" == 'kube-system' ] && [ "$RESOURCE_TYPE" == 'configmaps' ] && [ "$NAME" == 'cluster-autoscaler-status' ]
+            if [ -z "${TYPE}" ]
             then
-                logn "'${NAME}' resource of '${RESOURCE_TYPE}' type from '${NAMESPACE}' namespace ignored"
                 continue
             fi
 
-            echoenv RESOURCE | sanitize | json2yaml > $NAME.yaml
-
-            if [ "$RESOURCE_TYPE" == 'secrets' ]
+            if [ "${TYPE}" == 'nodes' ]
             then
-                log "Encrypt '${NAME}' secret"
-                sops -e -i $NAME.yaml
-
-                if ! differ $NAME.yaml
-                then
-                    log "No difference found since previous version of '${NAME}' secret, discard encryption metadata change"
-                    git checkout HEAD $NAME.yaml
-                fi
+                log "+++ IGNORE - TYPE ${TYPE}"
+                continue
             fi
 
-            if owned $NAME.yaml
-            then
-                log "'${NAME}' resource ignored, is owned"
-                rm $NAME.yaml
-            fi
+            log "+++ BEGIN - TYPE ${TYPE}"
+                log "++++ KUBECTL - get ${TYPE}"
+                RESOURCES=$(kubectl get "${TYPE}" --output=json | jq -c '.items[]')
+
+                log "++++ MKDIR - ${TYPE}"
+                mkdir -p "${TYPE}"
+
+                log "++++ CD - ${TYPE}"
+                cd "${TYPE}"
+                    echo -E "${RESOURCES}" | while read -r RESOURCE
+                    do
+                        if [ -z "${RESOURCE}" ]
+                        then
+                            continue
+                        fi
+
+                        NAME=$(echo -En "${RESOURCE}" | jq -r .metadata.name)
+
+                        log "+++++ BACKUP - RESOURCE ${TYPE}/${NAME}"
+                        echo -En "${RESOURCE}" | sanitize | json2yaml > "${NAME}.yaml"
+                    done
+                cd ..
+                log '++++ CD - ..'
+            log "+++ END - TYPE ${TYPE}"
         done
-
-        cd ..
-        logn "Finished handling '${RESOURCE_TYPE}' resource type"
-    done
-
     cd ..
-    logn "Finished handling resources in namespace '${NAMESPACE}'"
-done
-logn "Finished handling namespaced resource types"
+    log '++ CD - ..'
+log '+ END - Unnamespaced Resources'
 
-log "Commit changes"
+log '+ BEGIN - Namespaced Resources'
+for NAMESPACE in ${NAMESPACES}
+do
+    if [ -z "${NAMESPACE}" ]
+    then
+        continue
+    fi
+
+    if [ "${NAMESPACE}" == 'kube-node-lease' ]
+    then
+        log "++ IGNORE - NAMESPACE ${NAMESPACE}"
+        continue
+    fi
+
+    log "++ BEGIN - NAMESPACE ${NAMESPACE}"
+        log "+++ MKDIR - ${NAMESPACE}"
+        mkdir -p "${NAMESPACE}"
+
+        log "+++ CD - ${NAMESPACE}"
+        cd "${NAMESPACE}"
+            for TYPE in ${NAMESPACED_TYPES}
+            do
+                if [ -z "${TYPE}" ]
+                then
+                    continue
+                fi
+
+                if [ "${TYPE}" == 'events' ] || [ "${TYPE}" == 'events.events.k8s.io' ]
+                then
+                    log "++++ IGNORE - TYPE ${TYPE}"
+                    continue
+                fi
+
+                log "++++ BEGIN - TYPE ${TYPE}"
+                    log "+++++ KUBECTL - get ${TYPE} --namespace=${NAMESPACE}"
+                    RESOURCES=$(kubectl get "${TYPE}" --namespace="${NAMESPACE}" --output=json | jq -c '.items[]')
+
+                    log "+++++ MKDIR - ${TYPE}"
+                    mkdir -p "${TYPE}"
+
+                    log "+++++ CD - ${TYPE}"
+                    cd "${TYPE}"
+                        echo -E "${RESOURCES}" | while read -r RESOURCE
+                        do
+                            if [ -z "${RESOURCE}" ]
+                            then
+                                continue
+                            fi
+
+                            NAME=$(echo -En "${RESOURCE}" | jq -r .metadata.name)
+
+                            if [ "${NAME}" == 'cluster-autoscaler-status' ] && [ "${TYPE}" == 'configmaps' ] && [ "${NAMESPACE}" == 'kube-system' ]
+                            then
+                                log "++++++ IGNORE - RESOURCE --namespace=${NAMESPACE} ${TYPE}/${NAME}"
+                                continue
+                            fi
+
+                            log "++++++ BACKUP - RESOURCE --namespace=${NAMESPACE} ${TYPE}/${NAME}"
+                            echo -En "${RESOURCE}" | sanitize | json2yaml > "${NAME}.yaml"
+
+                            if [ "${TYPE}" == 'secrets' ]
+                            then
+                                log "++++++ ENCRYPT - RESOURCE --namespace=${NAMESPACE} ${TYPE}/${NAME}"
+                                sops -e -i "${NAME}.yaml"
+
+                                if ! differ "${NAME}.yaml"
+                                then
+                                    log "++++++ SKIP EQUALS - RESOURCE --namespace=${NAMESPACE} ${TYPE}/${NAME}"
+                                    git checkout HEAD "${NAME}.yaml"
+                                fi
+                            fi
+
+                            if owned "${NAME}.yaml"
+                            then
+                                log "++++++ SKIP OWNED - RESOURCE --namespace=${NAMESPACE} ${TYPE}/${NAME}"
+                                rm -f "${NAME}.yaml"
+                            fi
+                        done
+                    cd ..
+                    log '+++++ CD - ..'
+                log "++++ END - TYPE ${TYPE}"
+            done
+        cd ..
+        log '+++ CD - ..'
+    log "++ END - NAMESPACE ${NAMESPACE}"
+done
+log '+ END - Namespaced Resources'
+
+log '+ GIT - add'
 git add -A
-if git commit -m "$(date)"
+
+log '+ GIT - commit'
+if git commit -m "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 then
-    log "Push commit"
-    run_with_retry "git push"
+    log '+ GIT - push'
+    retry 'git push'
 fi
 
-log "Job completed"
+log 'END - Kube Dumper'

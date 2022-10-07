@@ -1,4 +1,6 @@
 on: push
+permissions:
+  contents: write
 jobs:
   release:
     name: Release

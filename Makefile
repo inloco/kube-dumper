@@ -1,5 +1,5 @@
 IMAGE_NAME ?= inloco/kube-dumper
-IMAGE_VERSION ?= v1.1.1
+IMAGE_VERSION ?= v1.2.0
 
 docker: docker-build docker-push
 
